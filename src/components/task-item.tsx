@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { motion } from 'framer-motion';
-import { formatRelative, isToday, isTomorrow, isPast } from 'date-fns';
+import { isToday, isTomorrow, isPast, format, isThisWeek } from 'date-fns';
 import { Item, Project } from '@/types';
 import { AreaDot } from './area-dot';
 import { ProjectPill } from './project-pill';
@@ -14,14 +14,13 @@ interface TaskItemProps {
 }
 
 const formatDueDate = (dateString: string): string => {
-  const date = new Date(dateString);
+  const date = new Date(dateString + 'T12:00:00'); // Avoid timezone issues
 
   if (isToday(date)) return 'Today';
   if (isTomorrow(date)) return 'Tomorrow';
+  if (isThisWeek(date)) return format(date, 'EEEE'); // "Monday", "Tuesday", etc.
 
-  return formatRelative(date, new Date(), {
-    weekStartsOn: 0,
-  });
+  return format(date, 'MMM d'); // "Dec 15"
 };
 
 const TaskItemComponent: React.FC<TaskItemProps> = ({
@@ -32,7 +31,8 @@ const TaskItemComponent: React.FC<TaskItemProps> = ({
   onEdit,
 }) => {
   const [isDragging, setIsDragging] = React.useState(false);
-  const isOverdue = item.due_date && isPast(new Date(item.due_date)) && !isToday(new Date(item.due_date));
+  const dueDate = item.due_date ? new Date(item.due_date + 'T12:00:00') : null;
+  const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate);
 
   const handleCheckboxClick = (e: React.MouseEvent) => {
     e.stopPropagation();

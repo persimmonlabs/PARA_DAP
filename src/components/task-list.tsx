@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { isToday, isTomorrow, isPast, parseISO } from 'date-fns';
+import { isToday, isPast, startOfDay } from 'date-fns';
 import { Item, Project } from '@/types';
 import { TaskItem } from './task-item';
 
@@ -20,6 +20,19 @@ type GroupedItems = {
   noDate: Item[];
 };
 
+const parseDate = (dateString: string): Date => {
+  // Parse YYYY-MM-DD as local date, not UTC
+  return new Date(dateString + 'T12:00:00');
+};
+
+const sortByDueDate = (items: Item[]): Item[] => {
+  return [...items].sort((a, b) => {
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+  });
+};
+
 const groupItemsByDate = (items: Item[]): GroupedItems => {
   const grouped: GroupedItems = {
     overdue: [],
@@ -28,24 +41,30 @@ const groupItemsByDate = (items: Item[]): GroupedItems => {
     noDate: [],
   };
 
+  const todayStart = startOfDay(new Date());
+
   items.forEach((item) => {
     if (!item.due_date) {
       grouped.noDate.push(item);
       return;
     }
 
-    const dueDate = parseISO(item.due_date);
+    const dueDate = parseDate(item.due_date);
+    const dueDateStart = startOfDay(dueDate);
 
-    if (isPast(dueDate) && !isToday(dueDate)) {
+    if (dueDateStart < todayStart) {
       grouped.overdue.push(item);
     } else if (isToday(dueDate)) {
       grouped.today.push(item);
-    } else if (isTomorrow(dueDate)) {
-      grouped.upcoming.push(item);
     } else {
       grouped.upcoming.push(item);
     }
   });
+
+  // Sort each group by due date
+  grouped.overdue = sortByDueDate(grouped.overdue);
+  grouped.today = sortByDueDate(grouped.today);
+  grouped.upcoming = sortByDueDate(grouped.upcoming);
 
   return grouped;
 };
